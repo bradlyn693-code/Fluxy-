@@ -187,21 +187,56 @@ function ServersPage({ setPage }: { setPage: (page: Page) => void }) {
 }
 
 function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmount?: number; setPage: (page: Page) => void }) {
-  return <div className="animate-page"><div style={{ maxWidth: 500, margin: "0 auto", padding: 12, background: "#0a0a0a", minHeight: "100vh" }}>
-    <div style={{ background: "linear-gradient(135deg,#0066ff,#00d4ff)", padding: 22, borderRadius: 18, color: "white", textAlign: "center" }}>
-      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>💳 Wallet Top-Up</h2>
-      <p style={{ margin: "6px 0 0", fontSize: 13, opacity: 0.9 }}>Instant • Secure • No redirect</p>
+  const [amount, setAmount] = useState("10");
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-paystack-inline="true"]');
+    if (existing) return;
+    const script = document.createElement("script");
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.async = true;
+    script.dataset.paystackInline = "true";
+    document.head.appendChild(script);
+  }, []);
+
+  const payNow = () => {
+    const numericAmount = Number(amount);
+    if (!email.trim() || !email.includes("@")) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      toast.error("Enter an amount greater than zero");
+      return;
+    }
+    const paystack = (window as Window & { PaystackPop?: { setup: (config: { key: string; email: string; amount: number; currency: string; onClose: () => void; callback: (response: { reference: string }) => void }) => { openIframe: () => void } } }).PaystackPop;
+    if (!paystack) {
+      toast.error("Payment is still loading. Please try again.");
+      return;
+    }
+    const handler = paystack.setup({
+      key: "YOUR_PAYSTACK_PUBLIC_KEY",
+      email: email.trim(),
+      amount: Math.round(numericAmount * 100),
+      currency: "USD",
+      onClose: () => undefined,
+      callback: (response) => toast.success(`Payment success! Ref: ${response.reference}`),
+    });
+    handler.openIframe();
+  };
+
+  return <div className="animate-page"><div id="wallet-page" style={{ maxWidth: 500, margin: "0 auto", padding: 16, background: "#0a0a0a", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
+    <div style={{ background: "linear-gradient(135deg,#0066ff,#00d4ff)", borderRadius: 20, padding: 20, color: "white", textAlign: "center" }}>
+      <h2 style={{ margin: 0, fontWeight: 900 }}>💳 Add Funds</h2>
+      <p style={{ margin: "4px 0 0", opacity: 0.9, fontSize: 13 }}>Top up your Fluxy Tech wallet</p>
     </div>
-    <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 16, padding: 16, marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ color: "#888", fontSize: 12 }}>CURRENT BALANCE</span>
-      <span style={{ color: "white", fontWeight: 800, fontSize: 18 }}>$0.00</span>
-    </div>
-    <div style={{ background: "white", borderRadius: 18, overflow: "hidden", marginTop: 14, border: "2px solid #0066ff" }}>
-      <div style={{ background: "#0a0a0a", padding: "10px 16px", display: "flex", justifyContent: "space-between" }}>
-        <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>🔒 Paystack Secure Payment</span>
-        <span style={{ color: "#00ff88", fontSize: 11 }}>● Live</span>
-      </div>
-      <iframe src="https://paystack.shop/pay/o2dkau16m7" style={{ width: "100%", height: 680, border: 0 }} allow="payment *" title="Paystack Secure Payment" />
+    <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 16, padding: 20, marginTop: 16 }}>
+      <label htmlFor="amount" style={{ color: "#888", fontSize: 12 }}>AMOUNT (USD)</label>
+      <input id="amount" type="number" value={amount} min="1" step="0.01" onChange={(event) => setAmount(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
+      <label htmlFor="email" style={{ color: "#888", fontSize: 12, marginTop: 16, display: "block" }}>EMAIL</label>
+      <input id="email" type="email" value={email} placeholder="your@email.com" onChange={(event) => setEmail(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
+      <button type="button" onClick={payNow} style={{ width: "100%", background: "linear-gradient(135deg,#0066ff,#00d4ff)", color: "white", border: 0, borderRadius: 12, padding: 16, fontWeight: 800, marginTop: 20, cursor: "pointer", fontSize: 16 }}>Pay Now</button>
     </div>
   </div></div>;
 }
