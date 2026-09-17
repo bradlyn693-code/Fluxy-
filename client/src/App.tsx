@@ -6,7 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 
 function RootRedirect() {
-  return <Redirect to="/login" />;
+  return <Redirect to="/dashboard" />;
 }
 
 function App() {
@@ -17,10 +17,6 @@ function App() {
           <Toaster theme="dark" />
           <Switch>
             <Route path="/" component={RootRedirect} />
-            <Route path="/login" component={Home} />
-            <Route path="/signup" component={Home} />
-            <Route path="/reset-password" component={Home} />
-            <Route path="/update-password" component={Home} />
             <Route path="/dashboard" component={Home} />
             <Route path="/servers" component={Home} />
             <Route path="/wallet" component={Home} />

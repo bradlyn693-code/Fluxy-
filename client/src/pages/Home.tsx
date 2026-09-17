@@ -67,86 +67,6 @@ function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function LoginPage({ initialRegistering = false }: { initialRegistering?: boolean }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isRegistering, setIsRegistering] = useState(initialRegistering);
-  const [remember, setRemember] = useState(() => localStorage.getItem("fluxy_remember") === "true");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [, navigate] = useLocation();
-
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("fluxy_email");
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRemember(true);
-    }
-  }, []);
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      const response = await fetch(isRegistering ? "/api/signup" : "/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const responseText = await response.text();
-      let payload: { error?: string; token?: string; user?: { email?: string; name?: string } } = {};
-      try {
-        payload = responseText ? JSON.parse(responseText) : {};
-      } catch {
-        payload = {};
-      }
-      if (!response.ok) {
-        if (response.status === 401) throw new Error("Email or password is incorrect. If you do not have an account, choose Create one.");
-        if (response.status === 409 && !isRegistering) throw new Error("This older account has no password yet. Choose Create one to set a password for it.");
-        if (response.status >= 500) throw new Error("The login service is temporarily unavailable. Please try again shortly.");
-        throw new Error(payload.error || "Please check your email and password and try again.");
-      }
-      if (!payload.token && !payload.user) throw new Error("The login service returned an invalid response. Please refresh and try again.");
-      localStorage.setItem("token", typeof payload.token === "string" ? payload.token : "loggedin");
-      const normalizedEmail = email.trim().toLowerCase();
-      localStorage.setItem("userEmail", normalizedEmail);
-      if (remember) {
-        localStorage.setItem("fluxy_email", normalizedEmail);
-        localStorage.setItem("fluxy_remember", "true");
-      } else {
-        localStorage.removeItem("fluxy_email");
-        localStorage.removeItem("fluxy_remember");
-      }
-      localStorage.setItem("fluxy_user", JSON.stringify(payload.user ?? { email: normalizedEmail }));
-      navigate("/dashboard");
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Authentication failed.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 py-10 text-white">
-      <div className="w-full max-w-[400px] rounded-[20px] border border-[#222] bg-[#161616] p-8">
-        <h1 className="text-center text-2xl font-bold text-white">Fluxy Tech</h1>
-        <p className="mt-2 text-center text-sm text-slate-400">{isRegistering ? "Create your account" : "Sign in to your account"}</p>
-        <form onSubmit={submit} className="mt-7 space-y-4">
-          <label className="block text-sm font-semibold text-slate-300">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
-          <label className="block text-sm font-semibold text-slate-300">Password<input type="password" required minLength={8} autoComplete={isRegistering ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
-          {!isRegistering && <div className="-mt-2 mb-4 text-right"><Link href="/reset-password" className="text-[13px] text-[#00d4ff] hover:underline">Forgot password?</Link></div>}
-          {!isRegistering && <label className="-mt-1 mb-2 flex cursor-pointer items-center gap-2 text-[13px] text-slate-400"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Remember me</label>}
-          {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
-          <button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{submitting ? "Please wait…" : isRegistering ? "Create Account" : "Sign In"}</button>
-        </form>
-        <button type="button" onClick={() => { const next = !isRegistering; setIsRegistering(next); setError(""); navigate(next ? "/signup" : "/login"); }} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">{isRegistering ? "Already have an account? Sign in" : "Need an account? Create one"}</button>
-      </div>
-    </main>
-  );
-}
-
 function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -352,10 +272,6 @@ function DashboardShell() {
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const user = localStorage.getItem("fluxy_user");
-    if (!user) navigate("/login");
-  }, [navigate]);
   const setPage = (next: Page) => { setPageState(next); navigate(`/${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const buy = (name: string, amount: number) => { localStorage.setItem("fluxy-plan", name); localStorage.setItem("fluxy-amount", String(amount)); setSelectedPlan(name); setSelectedAmount(amount); toast.success(`${name} selected`, { description: "Continue in Wallet to pay securely inside Fluxy Tech." }); setPage("wallet"); };
   const logout = async () => {
@@ -370,7 +286,7 @@ function DashboardShell() {
       localStorage.removeItem("userEmail");
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = "/login";
+      window.location.href = "/dashboard";
     }
   };
 
@@ -380,8 +296,5 @@ function DashboardShell() {
 export default function Home() {
   const [location] = useLocation();
   if (location === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
-  if (location === "/reset-password") return <ResetPasswordPage />;
-  if (location.startsWith("/update-password")) return <UpdatePasswordPage />;
-  if (!localStorage.getItem("fluxy_user")) return <LoginPage initialRegistering={location === "/signup"} />;
   return <DashboardShell />;
 }
