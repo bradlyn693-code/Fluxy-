@@ -17,6 +17,7 @@ function App() {
             <Route path="/dashboard" component={Home} />
             <Route path="/servers" component={Home} />
             <Route path="/wallet" component={Home} />
+            <Route path="/channels" component={Home} />
             <Route path="/pay/fluxt" component={Home} />
             <Route component={Home} />
           </Switch>
