@@ -1,9 +1,13 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+
+function RootRedirect() {
+  return <Redirect to="/login" />;
+}
 
 function App() {
   return (
@@ -12,7 +16,7 @@ function App() {
         <TooltipProvider>
           <Toaster theme="dark" />
           <Switch>
-            <Route path="/" component={Home} />
+            <Route path="/" component={RootRedirect} />
             <Route path="/login" component={Home} />
             <Route path="/dashboard" component={Home} />
             <Route path="/servers" component={Home} />

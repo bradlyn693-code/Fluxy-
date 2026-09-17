@@ -80,7 +80,7 @@ function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      const response = await fetch(isRegistering ? "/api/register" : "/api/login", {
+      const response = await fetch(isRegistering ? "/api/signup" : "/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

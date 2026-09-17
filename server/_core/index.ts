@@ -76,14 +76,17 @@ function registerPaymentRoute(app: express.Express) {
 }
 
 function registerPasswordAuthRoutes(app: express.Express) {
-  app.post("/api/register", async (req, res) => {
+  const signup = async (req: express.Request, res: express.Response) => {
     const email = normalizeEmail(String(req.body?.email ?? ""));
     const password = String(req.body?.password ?? "");
     const validationError = validateCredentials(email, password);
     if (validationError) return res.status(400).json({ error: validationError });
     try {
-      if (await db.getUserByEmail(email)) return res.status(409).json({ error: "An account with this email already exists." });
-      const user = await db.createEmailUser({ email, passwordHash: await hashPassword(password) });
+      const existingUser = await db.getUserByEmail(email);
+      if (existingUser?.passwordHash) return res.status(409).json({ error: "An account with this email already exists." });
+      const user = existingUser
+        ? await db.setUserPassword(existingUser.id, await hashPassword(password))
+        : await db.createEmailUser({ email, passwordHash: await hashPassword(password) });
       if (!user) return res.status(500).json({ error: "Account could not be created." });
       const token = await createCustomSessionToken(user.openId, user.name ?? email);
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
@@ -92,7 +95,9 @@ function registerPasswordAuthRoutes(app: express.Express) {
       console.error("[Auth] Registration failed", error);
       return res.status(500).json({ error: "Account could not be created." });
     }
-  });
+  };
+
+  app.post("/api/signup", signup);
 
   app.post("/api/login", async (req, res) => {
     const email = normalizeEmail(String(req.body?.email ?? ""));
