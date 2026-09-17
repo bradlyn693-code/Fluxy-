@@ -41,11 +41,7 @@ type Plan = {
 };
 
 const plans: Plan[] = [
-  { name: "Starter", price: 50, currency: "Kshs", memory: "400 MB", disk: "2000 MB", cpu: "100%", databases: 1, backups: 1, accent: "sky" },
-  { name: "Basic", price: 80, currency: "KES", memory: "1024 MB", disk: "5000 MB", cpu: "150%", databases: 2, backups: 2, accent: "blue" },
   { name: "Standard", price: 100, currency: "KES", memory: "2048 MB", disk: "10240 MB", cpu: "200%", databases: 3, backups: 3, accent: "violet", popular: true },
-  { name: "Pro", price: 150, currency: "KES", memory: "4096 MB", disk: "20480 MB", cpu: "300%", databases: 5, backups: 5, accent: "fuchsia" },
-  { name: "Unlimited", price: 250, currency: "KES", memory: "0 MB", disk: "0 MB", cpu: "0%", databases: 10, backups: 10, accent: "amber" },
 ];
 
 const accentClasses = { sky: "bg-sky-400", blue: "bg-blue-400", violet: "bg-violet-400", fuchsia: "bg-fuchsia-400", amber: "bg-amber-400" };
