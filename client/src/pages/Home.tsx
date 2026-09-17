@@ -202,8 +202,8 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
 
   const payNow = () => {
     const numericAmount = Number(amount);
-    if (!email.trim() || !email.includes("@")) {
-      toast.error("Enter a valid email address");
+    if (!email.trim()) {
+      window.alert("Enter email");
       return;
     }
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -216,12 +216,16 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
       return;
     }
     const handler = paystack.setup({
-      key: "YOUR_PAYSTACK_PUBLIC_KEY",
+      key: "pk_live_746fa4cd031258a58692b35c6f73e79ca330c873",
       email: email.trim(),
       amount: Math.round(numericAmount * 100),
       currency: "USD",
       onClose: () => undefined,
-      callback: (response) => toast.success(`Payment success! Ref: ${response.reference}`),
+      callback: (response) => {
+        fetch(`/wallet/verify?reference=${encodeURIComponent(response.reference)}`)
+          .then(() => { window.alert("Payment successful!"); window.location.reload(); })
+          .catch(() => window.alert("Payment verification failed. Please contact support."));
+      },
     });
     handler.openIframe();
   };
@@ -234,8 +238,8 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
     <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 16, padding: 20, marginTop: 16 }}>
       <label htmlFor="amount" style={{ color: "#888", fontSize: 12 }}>AMOUNT (USD)</label>
       <input id="amount" type="number" value={amount} min="1" step="0.01" onChange={(event) => setAmount(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
-      <label htmlFor="email" style={{ color: "#888", fontSize: 12, marginTop: 16, display: "block" }}>EMAIL</label>
-      <input id="email" type="email" value={email} placeholder="your@email.com" onChange={(event) => setEmail(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
+      <label htmlFor="email" style={{ color: "#888", fontSize: 12, marginTop: 12, display: "block" }}>EMAIL</label>
+      <input id="email" type="email" placeholder="your@email.com" onChange={(event) => setEmail(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
       <button type="button" onClick={payNow} style={{ width: "100%", background: "linear-gradient(135deg,#0066ff,#00d4ff)", color: "white", border: 0, borderRadius: 12, padding: 16, fontWeight: 800, marginTop: 20, cursor: "pointer", fontSize: 16 }}>Pay Now</button>
     </div>
   </div></div>;
