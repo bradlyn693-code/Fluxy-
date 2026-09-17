@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, passwordResetTokens, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,6 +89,13 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0];
+}
+
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) return undefined;
@@ -115,6 +122,27 @@ export async function setUserPassword(userId: number, passwordHash: string) {
   if (!db) throw new Error("Database is not available");
   await db.update(users).set({ passwordHash, loginMethod: "email" }).where(eq(users.id, userId));
   return db.select().from(users).where(eq(users.id, userId)).limit(1).then(result => result[0]);
+}
+
+export async function createPasswordResetToken(userId: number, tokenHash: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+  await db.insert(passwordResetTokens).values({ userId, tokenHash, expiresAt });
+}
+
+export async function consumePasswordResetToken(tokenHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.select().from(passwordResetTokens).where(and(
+    eq(passwordResetTokens.tokenHash, tokenHash),
+    isNull(passwordResetTokens.usedAt),
+    gt(passwordResetTokens.expiresAt, new Date()),
+  )).limit(1);
+  const token = result[0];
+  if (!token) return undefined;
+  await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, token.id));
+  return token;
 }
 
 // TODO: add feature queries here as your schema grows.

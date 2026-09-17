@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createHash, randomBytes } from "node:crypto";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -114,6 +115,73 @@ function registerPasswordAuthRoutes(app: express.Express) {
     } catch (error) {
       console.error("[Auth] Login failed", error);
       return res.status(500).json({ error: "Login is temporarily unavailable." });
+    }
+  });
+
+  app.post("/api/logout", (req, res) => {
+    res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
+    return res.json({ success: true });
+  });
+
+  app.post("/api/request-password-reset", async (req, res) => {
+    const email = normalizeEmail(String(req.body?.email ?? ""));
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
+    try {
+      const user = await db.getUserByEmail(email);
+      let deliveryConfigured = false;
+      if (user?.passwordHash) {
+        const rawToken = randomBytes(32).toString("hex");
+        const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+        await db.createPasswordResetToken(user.id, tokenHash, new Date(Date.now() + 30 * 60 * 1000));
+        const forwardedProto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0];
+        const baseUrl = process.env.APP_URL || `${forwardedProto}://${req.get("host")}`;
+        const resetUrl = `${baseUrl}/update-password?token=${rawToken}`;
+        const resendKey = process.env.RESEND_API_KEY;
+        const from = process.env.RESEND_FROM_EMAIL;
+        if (resendKey && from) {
+          const emailResponse = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from,
+              to: [email],
+              subject: "Reset your Fluxy Tech password",
+              html: `<p>Reset your Fluxy Tech password within 30 minutes:</p><p><a href="${resetUrl}">Reset password</a></p>`,
+            }),
+          });
+          deliveryConfigured = emailResponse.ok;
+          if (!emailResponse.ok) console.warn("[Auth] Reset email provider rejected the request.");
+        } else {
+          console.warn("[Auth] Reset token created, but no email provider is configured.");
+        }
+      }
+      return res.json({
+        message: "If an account exists for that email, reset instructions have been sent.",
+        deliveryConfigured,
+      });
+    } catch (error) {
+      console.error("[Auth] Password reset request failed", error);
+      return res.status(500).json({ error: "Password reset is temporarily unavailable." });
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res) => {
+    const token = String(req.body?.token ?? "").trim();
+    const password = String(req.body?.password ?? "");
+    if (!token) return res.status(400).json({ error: "This reset link is invalid or expired." });
+    const validationError = validateCredentials("reset@example.com", password);
+    if (validationError && validationError !== "Enter a valid email address.") return res.status(400).json({ error: validationError });
+    try {
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+      const resetToken = await db.consumePasswordResetToken(tokenHash);
+      if (!resetToken) return res.status(400).json({ error: "This reset link is invalid or expired." });
+      const user = await db.getUserById(resetToken.userId);
+      if (!user) return res.status(400).json({ error: "This reset link is invalid or expired." });
+      await db.setUserPassword(user.id, await hashPassword(password));
+      return res.json({ message: "Password updated successfully." });
+    } catch (error) {
+      console.error("[Auth] Password reset failed", error);
+      return res.status(500).json({ error: "Password reset is temporarily unavailable." });
     }
   });
 }

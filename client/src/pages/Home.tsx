@@ -26,7 +26,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
 
 type Plan = {
   name: string;
@@ -74,6 +73,7 @@ function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [, navigate] = useLocation();
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -90,7 +90,8 @@ function LoginPage() {
       if (!response.ok) throw new Error(payload.error || "Authentication failed.");
       localStorage.setItem("token", typeof payload.token === "string" ? payload.token : "loggedin");
       localStorage.setItem("userEmail", email.trim().toLowerCase());
-      window.location.href = "/dashboard";
+      localStorage.setItem("fluxy_user", JSON.stringify(payload.user ?? { email: email.trim().toLowerCase() }));
+      navigate("/dashboard");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Authentication failed.");
     } finally {
@@ -106,6 +107,7 @@ function LoginPage() {
         <form onSubmit={submit} className="mt-7 space-y-4">
           <label className="block text-sm font-semibold text-slate-300">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
           <label className="block text-sm font-semibold text-slate-300">Password<input type="password" required minLength={8} autoComplete={isRegistering ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
+          {!isRegistering && <div className="-mt-2 mb-4 text-right"><Link href="/reset-password" className="text-[13px] text-[#00d4ff] hover:underline">Forgot password?</Link></div>}
           {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
           <button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{submitting ? "Please wait…" : isRegistering ? "Create Account" : "Sign In"}</button>
         </form>
@@ -113,6 +115,64 @@ function LoginPage() {
       </div>
     </main>
   );
+}
+
+function ResetPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [deliveryConfigured, setDeliveryConfigured] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [, navigate] = useLocation();
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/request-password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Unable to request a password reset.");
+      setDeliveryConfigured(Boolean(payload.deliveryConfigured));
+      setSent(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to request a password reset.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 py-10 text-white"><div className="w-full max-w-[400px] rounded-[20px] border border-[#222] bg-[#161616] p-8"><h1 className="text-center text-2xl font-bold">Reset password</h1><p className="mt-2 text-center text-sm text-slate-400">Enter your account email and we’ll send reset instructions.</p>{sent ? <div className={`mt-7 rounded-xl border p-4 text-sm leading-6 ${deliveryConfigured ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>{deliveryConfigured ? "Check your email for a password reset link. The link is valid for 30 minutes." : "Your request was accepted, but email delivery is not configured for this deployment yet."}</div> : <form onSubmit={submit} className="mt-7 space-y-4"><label className="block text-sm font-semibold text-slate-300">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>{error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold disabled:cursor-wait disabled:opacity-60">{submitting ? "Sending…" : "Send reset link"}</button></form>}<button type="button" onClick={() => navigate("/login")} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">Back to sign in</button></div></main>;
+}
+
+function UpdatePasswordPage() {
+  const [location, navigate] = useLocation();
+  const token = new URLSearchParams(location.split("?")[1] ?? "").get("token") ?? "";
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [updated, setUpdated] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    if (!token) { setError("This reset link is invalid or expired."); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Unable to update password.");
+      setUpdated(true);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update password.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 py-10 text-white"><div className="w-full max-w-[400px] rounded-[20px] border border-[#222] bg-[#161616] p-8"><h1 className="text-center text-2xl font-bold">Choose a new password</h1><p className="mt-2 text-center text-sm text-slate-400">Use at least 8 characters.</p>{updated ? <div className="mt-7 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-200">Password updated successfully. You can sign in now.</div> : <form onSubmit={submit} className="mt-7 space-y-4"><label className="block text-sm font-semibold text-slate-300">New password<input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label><label className="block text-sm font-semibold text-slate-300">Confirm password<input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>{error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold disabled:cursor-wait disabled:opacity-60">{submitting ? "Updating…" : "Update password"}</button></form>}<button type="button" onClick={() => navigate("/login")} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">Back to sign in</button></div></main>;
 }
 function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; setPage: (page: Page) => void; onLogout: () => void | Promise<void>; isOpen: boolean; onClose: () => void }) {
   const navItems: { id: Page; label: string; icon?: typeof LayoutDashboard; emoji?: string; helper: string }[] = [
@@ -256,22 +316,26 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
   </div></div>;
 }
 function DashboardShell() {
-  const [, navigate] = useLocation();
-  const path = window.location.pathname;
+  const [path, navigate] = useLocation();
   const [page, setPageState] = useState<Page>(path.includes("servers") ? "servers" : path.includes("wallet") || path.includes("pay/fluxt") ? "wallet" : path.includes("channels") ? "channels" : "dashboard");
   const [selectedPlan, setSelectedPlan] = useState("");
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => { if (path === "/" || path === "/login") navigate("/dashboard"); }, [navigate, path]);
+  useEffect(() => {
+    const user = localStorage.getItem("fluxy_user");
+    if (!user) navigate("/login");
+  }, [navigate]);
   const setPage = (next: Page) => { setPageState(next); navigate(`/${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const buy = (name: string, amount: number) => { localStorage.setItem("fluxy-plan", name); localStorage.setItem("fluxy-amount", String(amount)); setSelectedPlan(name); setSelectedAmount(amount); toast.success(`${name} selected`, { description: "Continue in Wallet to pay securely inside Fluxy Tech." }); setPage("wallet"); };
-  const { logout: authLogout } = useAuth();
   const logout = async () => {
     if (!window.confirm("Are you sure?")) return;
     try {
-      await authLogout();
+      await fetch("/api/logout", { method: "POST", credentials: "include" });
+    } catch {
+      // Local sign-out must still complete if the server session is unavailable.
     } finally {
+      localStorage.removeItem("fluxy_user");
       localStorage.removeItem("token");
       localStorage.removeItem("userEmail");
       localStorage.clear();
@@ -286,6 +350,8 @@ function DashboardShell() {
 export default function Home() {
   const [location] = useLocation();
   if (location === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
-  if (!localStorage.getItem("token")) return <LoginPage />;
+  if (location === "/reset-password") return <ResetPasswordPage />;
+  if (location.startsWith("/update-password")) return <UpdatePasswordPage />;
+  if (!localStorage.getItem("fluxy_user")) return <LoginPage />;
   return <DashboardShell />;
 }

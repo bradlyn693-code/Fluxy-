@@ -15,6 +15,13 @@
       "when": 1789658387095,
       "tag": "0001_silky_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789660844983,
+      "tag": "0002_ancient_dazzler",
+      "breakpoints": true
     }
   ]
 }
