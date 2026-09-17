@@ -219,7 +219,7 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
       key: "pk_live_746fa4cd031258a58692b35c6f73e79ca330c873",
       email: email.trim(),
       amount: Math.round(numericAmount * 100),
-      currency: "USD",
+      currency: "KES",
       onClose: () => undefined,
       callback: (response) => {
         fetch(`/wallet/verify?reference=${encodeURIComponent(response.reference)}`)
@@ -236,7 +236,7 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
       <p style={{ margin: "4px 0 0", opacity: 0.9, fontSize: 13 }}>Top up your Fluxy Tech wallet</p>
     </div>
     <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 16, padding: 20, marginTop: 16 }}>
-      <label htmlFor="amount" style={{ color: "#888", fontSize: 12 }}>AMOUNT (USD)</label>
+      <label htmlFor="amount" style={{ color: "#888", fontSize: 12 }}>AMOUNT (KES)</label>
       <input id="amount" type="number" value={amount} min="1" step="0.01" onChange={(event) => setAmount(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
       <label htmlFor="email" style={{ color: "#888", fontSize: 12, marginTop: 12, display: "block" }}>EMAIL</label>
       <input id="email" type="email" placeholder="your@email.com" onChange={(event) => setEmail(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
