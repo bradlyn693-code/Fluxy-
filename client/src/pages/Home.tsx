@@ -127,19 +127,19 @@ function LoginPage() {
   );
 }
 
-function Sidebar({ page, setPage, onLogout }: { page: Page; setPage: (page: Page) => void; onLogout: () => void }) {
+function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; setPage: (page: Page) => void; onLogout: () => void; isOpen: boolean; onClose: () => void }) {
   const navItems: { id: Page; label: string; icon: typeof LayoutDashboard; helper: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, helper: "Overview & plans" },
     { id: "servers", label: "My Servers", icon: Server, helper: "Your infrastructure" },
     { id: "wallet", label: "Wallet", icon: WalletCards, helper: "Payments & billing" },
   ];
 
-  return <aside className="sidebar fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-blue-900/30 bg-[#0c1228]/90 p-4 backdrop-blur-2xl lg:flex">
-    <div className="px-2 py-2"><Logo /></div>
+  return <aside className={`sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-blue-900/30 bg-[#0c1228]/95 p-4 backdrop-blur-2xl transition-transform duration-200 ease-out md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+    <div className="flex items-center justify-between px-2 py-2"><Logo /><button className="icon-button md:hidden" aria-label="Close menu" onClick={onClose}><X className="size-4" /></button></div>
     <div className="my-8 h-px bg-gradient-to-r from-transparent via-blue-400/20 to-transparent" />
     <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600">Workspace</div>
     <nav className="space-y-1.5">
-      {navItems.map(({ id, label, icon: Icon, helper }) => <button key={id} onClick={() => setPage(id)} className={`nav-item ${page === id ? "nav-item-active" : ""}`}><Icon className="size-[18px]" /><span className="flex-1 text-left"><span className="block text-sm font-semibold">{label}</span><span className="mt-0.5 block text-[10px] text-slate-600">{helper}</span></span>{page === id && <ChevronRight className="size-3.5 text-blue-300" />}</button>)}
+      {navItems.map(({ id, label, icon: Icon, helper }) => <button key={id} onClick={() => { setPage(id); onClose(); }} className={`nav-item ${page === id ? "nav-item-active" : ""}`}><Icon className="size-[18px]" /><span className="flex-1 text-left"><span className="block text-sm font-semibold">{label}</span><span className="mt-0.5 block text-[10px] text-slate-600">{helper}</span></span>{page === id && <ChevronRight className="size-3.5 text-blue-300" />}</button>)}
     </nav>
     <div className="mt-auto space-y-4">
       <div className="rounded-2xl border border-blue-400/10 bg-blue-500/[0.06] p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-300">Need a hand?</span><CircleHelp className="size-4 text-blue-300" /></div><p className="text-[11px] leading-5 text-slate-500">Our cloud crew is online 24/7.</p><button onClick={() => toast.success("Support request started")} className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Open support <ArrowRight className="ml-1 inline size-3" /></button></div>
@@ -148,9 +148,9 @@ function Sidebar({ page, setPage, onLogout }: { page: Page; setPage: (page: Page
   </aside>;
 }
 
-function Topbar({ setPage }: { setPage: (page: Page) => void }) {
+function Topbar({ setPage, onMenu }: { setPage: (page: Page) => void; onMenu: () => void }) {
   const [search, setSearch] = useState("");
-  return <header className="mb-8 flex items-center justify-between gap-4"><div className="flex items-center gap-3 lg:hidden"><button className="icon-button" aria-label="Open menu"><Menu className="size-5" /></button><Logo compact /></div><div className="relative hidden max-w-md flex-1 md:block"><Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-600" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setPage("dashboard"); toast(search ? `Showing results for ${search}` : "Browse all hosting plans"); } }} className="w-full rounded-xl border border-white/10 bg-white/[0.035] py-3 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400/50 focus:bg-white/[0.055]" placeholder="Search plans..." /></div><div className="flex items-center gap-2"><button className="icon-button relative" aria-label="Notifications" onClick={() => toast("You're all caught up")}><Bell className="size-4" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-cyan-400" /></button><button onClick={() => { setPage("dashboard"); toast("Choose a plan to upgrade your workspace"); }} className="primary-button hidden px-4 py-2.5 text-xs sm:flex">Upgrade <Zap className="size-3.5 fill-current" /></button></div></header>;
+  return <header className="mb-8 flex items-center justify-between gap-4"><div className="flex items-center gap-3 md:hidden"><button className="icon-button" aria-label="Open menu" onClick={onMenu}><Menu className="size-5" /></button><Logo compact /></div><div className="relative hidden max-w-md flex-1 md:block"><Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-600" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setPage("dashboard"); toast(search ? `Showing results for ${search}` : "Browse all hosting plans"); } }} className="w-full rounded-xl border border-white/10 bg-white/[0.035] py-3 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400/50 focus:bg-white/[0.055]" placeholder="Search plans..." /></div><div className="flex items-center gap-2"><button className="icon-button relative" aria-label="Notifications" onClick={() => toast("You're all caught up")}><Bell className="size-4" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-cyan-400" /></button><button onClick={() => { setPage("dashboard"); toast("Choose a plan to upgrade your workspace"); }} className="primary-button hidden px-4 py-2.5 text-xs sm:flex">Upgrade <Zap className="size-3.5 fill-current" /></button></div></header>;
 }
 
 function PlanCard({ plan, buy }: { plan: Plan; buy: (plan: Plan) => void }) {
@@ -166,7 +166,7 @@ function PlanCard({ plan, buy }: { plan: Plan; buy: (plan: Plan) => void }) {
 function Spec({ icon: Icon, label, value }: { icon: typeof Database; label: string; value: string }) { return <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-slate-500"><Icon className="size-3.5 text-slate-600" />{label}</span><span className="font-bold text-slate-200">{value}</span></div>; }
 
 function DashboardPage({ buy }: { buy: (plan: Plan) => void }) {
-  return <div className="animate-page"><div className="mb-2 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-500/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300"><span className="size-1.5 animate-pulse rounded-full bg-cyan-300" /> Infrastructure ready</div><h1 className="text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">Hosting Plans</h1><p className="mt-3 max-w-lg text-sm leading-6 text-slate-400">Choose the perfect plan for your projects <span className="text-slate-600">—</span> scale anytime.</p></div><div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-slate-500 md:flex"><ShieldCheck className="size-4 text-emerald-400" /> 99.9% uptime SLA</div></div><div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">{plans.map((plan) => <PlanCard key={plan.name} plan={plan} buy={buy} />)}</div><div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-center text-xs text-slate-500"><span>24/7 support</span><span className="size-1 rounded-full bg-blue-400/60" /><span>Instant provisioning</span><span className="size-1 rounded-full bg-blue-400/60" /><span>99.9% Uptime SLA</span></div></div>;
+  return <div className="animate-page"><div className="mb-2 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-500/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300"><span className="size-1.5 animate-pulse rounded-full bg-cyan-300" /> Infrastructure ready</div><h1 className="text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">Hosting Plans</h1><p className="mt-3 max-w-lg text-sm leading-6 text-slate-400">Choose the perfect plan for your projects <span className="text-slate-600">—</span> scale anytime.</p></div><div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-slate-500 md:flex"><ShieldCheck className="size-4 text-emerald-400" /> 99.9% uptime SLA</div></div><div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">{plans.map((plan) => <PlanCard key={plan.name} plan={plan} buy={buy} />)}</div><div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-center text-xs text-slate-500"><span>24/7 support</span><span className="size-1 rounded-full bg-blue-400/60" /><span>Instant provisioning</span><span className="size-1 rounded-full bg-blue-400/60" /><span>99.9% Uptime SLA</span></div></div>;
 }
 
 function ServersPage({ setPage }: { setPage: (page: Page) => void }) {
@@ -205,13 +205,14 @@ function DashboardShell() {
   const [page, setPageState] = useState<Page>(path.includes("servers") ? "servers" : path.includes("wallet") || path.includes("pay/fluxt") ? "wallet" : "dashboard");
   const [selectedPlan, setSelectedPlan] = useState("");
   const [selectedAmount, setSelectedAmount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => { if (path === "/" || path === "/login") navigate("/dashboard"); }, [navigate, path]);
   const setPage = (next: Page) => { setPageState(next); navigate(`/${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const buy = (plan: Plan) => { setSelectedPlan(plan.name); setSelectedAmount(plan.price); toast.success(`${plan.name} selected`, { description: "Continue in Wallet to pay with M-Pesa." }); setPage("wallet"); };
   const logout = () => { localStorage.removeItem("fluxy-auth"); navigate("/login"); toast("You have been logged out"); };
 
-  return <div className="min-h-screen bg-[#060a18] text-white"><div className="nebula-orb nebula-orb-one" /><div className="nebula-orb nebula-orb-two" /><Sidebar page={page} setPage={setPage} onLogout={logout} /><main className="relative min-h-screen lg:ml-64"><div className="mx-auto max-w-[1500px] px-5 py-5 sm:px-8 sm:py-7"><Topbar setPage={setPage} />{page === "dashboard" && <DashboardPage buy={buy} />}{page === "servers" && <ServersPage setPage={setPage} />}{page === "wallet" && <WalletPage selectedPlan={selectedPlan} selectedAmount={selectedAmount} setPage={setPage} />}</div></main></div>;
+  return <div className="min-h-screen bg-[#060a18] text-white"><div className="nebula-orb nebula-orb-one" /><div className="nebula-orb nebula-orb-two" />{sidebarOpen && <button type="button" aria-label="Close menu overlay" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-black/50 md:hidden" />}<Sidebar page={page} setPage={setPage} onLogout={logout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} /><main className="relative min-h-screen md:ml-64"><div className="mx-auto max-w-[1500px] px-5 py-5 sm:px-8 sm:py-7"><Topbar setPage={setPage} onMenu={() => setSidebarOpen(true)} />{page === "dashboard" && <DashboardPage buy={buy} />}{page === "servers" && <ServersPage setPage={setPage} />}{page === "wallet" && <WalletPage selectedPlan={selectedPlan} selectedAmount={selectedAmount} setPage={setPage} />}</div></main></div>;
 }
 
 export default function Home() {
