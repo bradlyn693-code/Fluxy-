@@ -95,6 +95,7 @@ function LoginPage() {
       }
       if (!response.ok) {
         if (response.status === 401) throw new Error("Email or password is incorrect. If you do not have an account, choose Create one.");
+        if (response.status === 409 && !isRegistering) throw new Error("This older account has no password yet. Choose Create one to set a password for it.");
         if (response.status >= 500) throw new Error("The login service is temporarily unavailable. Please try again shortly.");
         throw new Error(payload.error || "Please check your email and password and try again.");
       }

@@ -76,7 +76,7 @@ function registerPaymentRoute(app: express.Express) {
   });
 }
 
-function registerPasswordAuthRoutes(app: express.Express) {
+export function registerPasswordAuthRoutes(app: express.Express) {
   const signup = async (req: express.Request, res: express.Response) => {
     const email = normalizeEmail(String(req.body?.email ?? ""));
     const password = String(req.body?.password ?? "");
@@ -107,7 +107,9 @@ function registerPasswordAuthRoutes(app: express.Express) {
     if (validationError) return res.status(400).json({ error: validationError });
     try {
       const user = await db.getUserByEmail(email);
-      if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return res.status(401).json({ error: "Invalid email or password." });
+      if (!user) return res.status(401).json({ error: "Invalid email or password." });
+      if (!user.passwordHash) return res.status(409).json({ error: "This older account has no password yet. Choose Create one to set a password for it." });
+      if (!(await verifyPassword(password, user.passwordHash))) return res.status(401).json({ error: "Invalid email or password." });
       await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
       const token = await createCustomSessionToken(user.openId, user.name ?? email);
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
@@ -204,4 +206,4 @@ async function startServer() {
   server.listen(port, () => console.log(`Server running on http://localhost:${port}/`));
 }
 
-startServer().catch(console.error);
+if (!process.env.VERCEL) startServer().catch(console.error);
