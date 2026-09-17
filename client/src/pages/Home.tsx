@@ -69,9 +69,10 @@ function Logo({ compact = false }: { compact?: boolean }) {
 
 function LoginPage() {
   const [, navigate] = useLocation();
-  const [email, setEmail] = useState("alex@fluxy.tech");
+  const [email, setEmail] = useState(() => localStorage.getItem("fluxy-email") || "alex@fluxy.tech");
   const [password, setPassword] = useState("password");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("fluxy-remember-me") !== "false");
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -80,7 +81,9 @@ function LoginPage() {
       return;
     }
     localStorage.setItem("fluxy-auth", "true");
-    localStorage.setItem("fluxy-email", email.trim());
+    localStorage.setItem("fluxy-remember-me", String(rememberMe));
+    if (rememberMe) localStorage.setItem("fluxy-email", email.trim());
+    else localStorage.removeItem("fluxy-email");
     toast.success("Welcome back to Fluxy Tech");
     navigate("/dashboard");
   };
@@ -114,7 +117,7 @@ function LoginPage() {
                 <button type="button" className="text-xs font-semibold text-slate-500 hover:text-white" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button>
               </div>
             </label>
-            <div className="flex items-center justify-between text-xs text-slate-500"><label className="flex items-center gap-2"><input type="checkbox" defaultChecked className="accent-blue-500" /> Remember me</label><button type="button" onClick={() => toast("Password reset is ready for your inbox")} className="font-semibold text-blue-300 hover:text-blue-200">Forgot password?</button></div>
+            <div className="flex items-center justify-between text-xs text-slate-500"><label className="flex items-center gap-2"><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="accent-blue-500" /> Remember me</label><button type="button" onClick={() => toast("Password reset is ready for your inbox")} className="font-semibold text-blue-300 hover:text-blue-200">Forgot password?</button></div>
             <button type="submit" className="primary-button w-full py-3.5">Log In <ArrowRight className="size-4" /></button>
           </form>
           <div className="mt-7 flex items-center gap-3 text-xs text-slate-500"><div className="h-px flex-1 bg-white/10" /> Secure workspace <div className="h-px flex-1 bg-white/10" /></div>
