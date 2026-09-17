@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1789626453098,
+      "tag": "0000_elite_puck",
+      "breakpoints": true
+    }
+  ]
 }
