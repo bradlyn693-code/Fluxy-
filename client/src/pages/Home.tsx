@@ -86,8 +86,19 @@ function LoginPage() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Authentication failed.");
+      const responseText = await response.text();
+      let payload: { error?: string; token?: string; user?: { email?: string; name?: string } } = {};
+      try {
+        payload = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        payload = {};
+      }
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("Email or password is incorrect. If you do not have an account, choose Create one.");
+        if (response.status >= 500) throw new Error("The login service is temporarily unavailable. Please try again shortly.");
+        throw new Error(payload.error || "Please check your email and password and try again.");
+      }
+      if (!payload.token && !payload.user) throw new Error("The login service returned an invalid response. Please refresh and try again.");
       localStorage.setItem("token", typeof payload.token === "string" ? payload.token : "loggedin");
       localStorage.setItem("userEmail", email.trim().toLowerCase());
       localStorage.setItem("fluxy_user", JSON.stringify(payload.user ?? { email: email.trim().toLowerCase() }));
