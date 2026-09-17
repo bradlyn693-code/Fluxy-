@@ -186,25 +186,25 @@ function ServersPage({ setPage }: { setPage: (page: Page) => void }) {
   return <div className="animate-page"><div className="mb-2"><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300"><Server className="size-3" /> Fleet status</div><h1 className="text-4xl font-black tracking-[-0.04em] text-white">My Servers <span className="text-3xl">🕋</span></h1><p className="mt-3 text-sm text-slate-400">Your provisioned infrastructure will appear here.</p></div><div className="glass-panel mt-8 flex min-h-[410px] flex-col items-center justify-center rounded-3xl p-12 text-center"><div className="mb-6 grid size-20 place-items-center rounded-3xl border border-blue-400/20 bg-blue-500/10 text-blue-300 shadow-[0_0_40px_rgba(37,99,235,0.16)]"><Server className="size-9" /></div><h2 className="text-xl font-black text-white">My Active Servers</h2><p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">No servers yet. Buy Admin Panel to create.</p><button onClick={() => setPage("dashboard")} className="primary-button mt-7 px-5 py-3">Go to Dashboard <ArrowRight className="size-4" /></button></div></div>;
 }
 
-function WalletPage({ selectedPlan, selectedAmount, setPage }: { selectedPlan: string; selectedAmount: number; setPage: (page: Page) => void }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [storedPlan, setStoredPlan] = useState(selectedPlan);
-  const [storedAmount, setStoredAmount] = useState(selectedAmount);
-  const plan = storedPlan || selectedPlan || "Select a plan";
-  const amount = storedAmount || selectedAmount;
-  const iframeSrc = `https://courtneytech.xyz/pay/fluxt?plan=${encodeURIComponent(plan)}&amount=${amount}`;
-
-  useEffect(() => {
-    const savedPlan = localStorage.getItem("fluxy-plan") || selectedPlan;
-    const savedAmount = Number(localStorage.getItem("fluxy-amount")) || selectedAmount;
-    setStoredPlan(savedPlan || "");
-    setStoredAmount(savedAmount || 0);
-    requestAnimationFrame(() => iframeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [selectedPlan, selectedAmount]);
-
-  return <div className="animate-page"><div className="mb-2"><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-300"><CreditCard className="size-3" /> Secure checkout</div><h1 className="text-4xl font-black tracking-[-0.04em] text-white">Complete your order</h1><p className="mt-3 text-sm text-slate-400">Pay securely without leaving Fluxy Tech.</p></div><div className="glass-panel mt-8 rounded-3xl p-4 sm:p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-400/20 bg-blue-500/[0.08] px-4 py-3"><div><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Selected plan</div><div className="mt-1 text-sm font-black text-white">{plan} {amount > 0 && <span className="ml-2 text-blue-300">KES {amount.toFixed(2)}</span>}</div></div><button type="button" onClick={() => setPage("dashboard")} className="text-xs font-bold text-blue-300 hover:text-blue-200">Browse plans <ArrowRight className="ml-1 inline size-3" /></button></div><div ref={iframeRef} className="overflow-hidden rounded-2xl border border-white/10"><iframe src={iframeSrc} className="h-[600px] w-full border-0 md:h-[700px]" allow="payment" title="Secure Payment" /></div></div></div>;
+function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmount?: number; setPage: (page: Page) => void }) {
+  return <div className="animate-page"><div style={{ maxWidth: 500, margin: "0 auto", padding: 12, background: "#0a0a0a", minHeight: "100vh" }}>
+    <div style={{ background: "linear-gradient(135deg,#0066ff,#00d4ff)", padding: 22, borderRadius: 18, color: "white", textAlign: "center" }}>
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>💳 Wallet Top-Up</h2>
+      <p style={{ margin: "6px 0 0", fontSize: 13, opacity: 0.9 }}>Instant • Secure • No redirect</p>
+    </div>
+    <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 16, padding: 16, marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ color: "#888", fontSize: 12 }}>CURRENT BALANCE</span>
+      <span style={{ color: "white", fontWeight: 800, fontSize: 18 }}>$0.00</span>
+    </div>
+    <div style={{ background: "white", borderRadius: 18, overflow: "hidden", marginTop: 14, border: "2px solid #0066ff" }}>
+      <div style={{ background: "#0a0a0a", padding: "10px 16px", display: "flex", justifyContent: "space-between" }}>
+        <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>🔒 Paystack Secure Payment</span>
+        <span style={{ color: "#00ff88", fontSize: 11 }}>● Live</span>
+      </div>
+      <iframe src="https://paystack.shop/pay/o2dkau16m7" style={{ width: "100%", height: 680, border: 0 }} allow="payment *" title="Paystack Secure Payment" />
+    </div>
+  </div></div>;
 }
-
 function DashboardShell() {
   const [, navigate] = useLocation();
   const path = window.location.pathname;
