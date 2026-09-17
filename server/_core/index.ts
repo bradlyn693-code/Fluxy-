@@ -7,8 +7,13 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { buildPaymentRequest } from "../payment";
+import * as db from "../db";
+import { hashPassword, normalizeEmail, validateCredentials, verifyPassword } from "../passwordAuth";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getSessionCookieOptions } from "./cookies";
+import { sdk } from "./sdk";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -71,6 +76,44 @@ function registerPaymentRoute(app: express.Express) {
   });
 }
 
+function registerPasswordAuthRoutes(app: express.Express) {
+  app.post("/api/register", async (req, res) => {
+    const email = normalizeEmail(String(req.body?.email ?? ""));
+    const password = String(req.body?.password ?? "");
+    const validationError = validateCredentials(email, password);
+    if (validationError) return res.status(400).json({ error: validationError });
+    try {
+      if (await db.getUserByEmail(email)) return res.status(409).json({ error: "An account with this email already exists." });
+      const user = await db.createEmailUser({ email, passwordHash: await hashPassword(password) });
+      if (!user) return res.status(500).json({ error: "Account could not be created." });
+      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? email, expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      return res.status(201).json({ token, user: { email: user.email, name: user.name } });
+    } catch (error) {
+      console.error("[Auth] Registration failed", error);
+      return res.status(500).json({ error: "Account could not be created." });
+    }
+  });
+
+  app.post("/api/login", async (req, res) => {
+    const email = normalizeEmail(String(req.body?.email ?? ""));
+    const password = String(req.body?.password ?? "");
+    const validationError = validateCredentials(email, password);
+    if (validationError) return res.status(400).json({ error: validationError });
+    try {
+      const user = await db.getUserByEmail(email);
+      if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return res.status(401).json({ error: "Invalid email or password." });
+      await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? email, expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      return res.json({ token, user: { email: user.email, name: user.name } });
+    } catch (error) {
+      console.error("[Auth] Login failed", error);
+      return res.status(500).json({ error: "Login is temporarily unavailable." });
+    }
+  });
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -78,6 +121,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerPasswordAuthRoutes(app);
   registerPaymentRoute(app);
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
   if (process.env.NODE_ENV === "development") await setupVite(app, server);

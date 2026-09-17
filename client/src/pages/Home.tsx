@@ -26,7 +26,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 type Plan = {
@@ -70,24 +69,49 @@ function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [, navigate] = useLocation();
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const response = await fetch(isRegistering ? "/api/register" : "/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Authentication failed.");
+      if (typeof payload.token === "string") localStorage.setItem("token", payload.token);
+      localStorage.setItem("userEmail", email.trim().toLowerCase());
+      navigate("/dashboard");
+      window.location.reload();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Authentication failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#060a18] px-4 py-10 text-white">
-      <div className="nebula-orb nebula-orb-one" />
-      <div className="nebula-orb nebula-orb-two" />
-      <div className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_18%_22%,rgba(59,130,246,0.22)_0,transparent_25%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.16)_0,transparent_26%)]" />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 flex justify-center"><Logo /></div>
-        <div className="glass-panel rounded-[28px] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
-          <div className="mb-8">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300"><Sparkles className="size-3.5" /> Control plane access</div>
-            <h1 className="text-3xl font-black tracking-tight">Welcome back</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Sign in securely to manage your servers, plans, and payments.</p>
-          </div>
-          <button type="button" onClick={() => startLogin()} className="primary-button w-full py-3.5">Continue with secure login <ArrowRight className="size-4" /></button>
-          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Only registered Fluxy Tech accounts can access the workspace.</p>
-          <div className="mt-7 flex items-center gap-3 text-xs text-slate-500"><div className="h-px flex-1 bg-white/10" /> Secure workspace <div className="h-px flex-1 bg-white/10" /></div>
-        </div>
-        <p className="mt-6 text-center text-xs text-slate-600">By continuing, you agree to Fluxy Tech's terms and privacy policy.</p>
+    <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 py-10 text-white">
+      <div className="w-full max-w-[400px] rounded-[20px] border border-[#222] bg-[#161616] p-8">
+        <h1 className="text-center text-2xl font-bold text-white">Fluxy Tech</h1>
+        <p className="mt-2 text-center text-sm text-slate-400">{isRegistering ? "Create your account" : "Sign in to your account"}</p>
+        <form onSubmit={submit} className="mt-7 space-y-4">
+          <label className="block text-sm font-semibold text-slate-300">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
+          <label className="block text-sm font-semibold text-slate-300">Password<input type="password" required minLength={8} autoComplete={isRegistering ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
+          {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
+          <button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{submitting ? "Please wait…" : isRegistering ? "Create Account" : "Sign In"}</button>
+        </form>
+        <button type="button" onClick={() => { setIsRegistering((value) => !value); setError(""); }} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">{isRegistering ? "Already have an account? Sign in" : "Need an account? Create one"}</button>
       </div>
     </main>
   );
@@ -109,7 +133,7 @@ function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; set
     </nav>
     <div className="mt-auto space-y-4">
       <div className="rounded-2xl border border-blue-400/10 bg-blue-500/[0.06] p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-300">Need a hand?</span><CircleHelp className="size-4 text-blue-300" /></div><p className="text-[11px] leading-5 text-slate-500">Our cloud crew is online 24/7.</p><button onClick={() => toast.success("Support request started")} className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Open support <ArrowRight className="ml-1 inline size-3" /></button></div>
-      <div className="border-t border-white/5 px-2 pt-4"><button type="button" aria-label="Sign out" onClick={onLogout} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#ff4d4d", padding: 12, borderRadius: 10, fontWeight: 700, width: "100%" }}>🚪 Sign Out</button></div>
+      <div className="border-t border-white/5 px-2 pt-4"><button type="button" aria-label="Sign out" onClick={onLogout} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#ff4d4d", padding: 12, borderRadius: 10, fontWeight: 700, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>🚪 Sign Out</button></div>
     </div>
   </aside>;
 }
@@ -246,9 +270,12 @@ function DashboardShell() {
   const buy = (name: string, amount: number) => { localStorage.setItem("fluxy-plan", name); localStorage.setItem("fluxy-amount", String(amount)); setSelectedPlan(name); setSelectedAmount(amount); toast.success(`${name} selected`, { description: "Continue in Wallet to pay securely inside Fluxy Tech." }); setPage("wallet"); };
   const { logout: authLogout } = useAuth();
   const logout = async () => {
+    if (!window.confirm("Are you sure?")) return;
     try {
       await authLogout();
     } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userEmail");
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/login";

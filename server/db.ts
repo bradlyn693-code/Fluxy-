@@ -89,4 +89,25 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
+}
+
+export async function createEmailUser(input: { email: string; passwordHash: string; name?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const openId = `email:${input.email}`;
+  await db.insert(users).values({
+    openId,
+    email: input.email,
+    passwordHash: input.passwordHash,
+    name: input.name ?? input.email.split("@")[0] ?? "Fluxy user",
+    loginMethod: "email",
+  });
+  return getUserByOpenId(openId);
+}
+
 // TODO: add feature queries here as your schema grows.
