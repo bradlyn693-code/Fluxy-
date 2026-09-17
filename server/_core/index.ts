@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { buildPaymentRequest } from "../payment";
@@ -12,7 +11,7 @@ import { hashPassword, normalizeEmail, validateCredentials, verifyPassword } fro
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { createCustomSessionToken } from "./customAuth";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -86,7 +85,7 @@ function registerPasswordAuthRoutes(app: express.Express) {
       if (await db.getUserByEmail(email)) return res.status(409).json({ error: "An account with this email already exists." });
       const user = await db.createEmailUser({ email, passwordHash: await hashPassword(password) });
       if (!user) return res.status(500).json({ error: "Account could not be created." });
-      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? email, expiresInMs: ONE_YEAR_MS });
+      const token = await createCustomSessionToken(user.openId, user.name ?? email);
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       return res.status(201).json({ token, user: { email: user.email, name: user.name } });
     } catch (error) {
@@ -104,7 +103,7 @@ function registerPasswordAuthRoutes(app: express.Express) {
       const user = await db.getUserByEmail(email);
       if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return res.status(401).json({ error: "Invalid email or password." });
       await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
-      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? email, expiresInMs: ONE_YEAR_MS });
+      const token = await createCustomSessionToken(user.openId, user.name ?? email);
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       return res.json({ token, user: { email: user.email, name: user.name } });
     } catch (error) {
@@ -120,7 +119,6 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
-  registerOAuthRoutes(app);
   registerPasswordAuthRoutes(app);
   registerPaymentRoute(app);
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
