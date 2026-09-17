@@ -23,9 +23,11 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { startLogin } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type Plan = {
   name: string;
@@ -68,26 +70,6 @@ function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 function LoginPage() {
-  const [, navigate] = useLocation();
-  const [email, setEmail] = useState(() => localStorage.getItem("fluxy-email") || "alex@fluxy.tech");
-  const [password, setPassword] = useState("password");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("fluxy-remember-me") !== "false");
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error("Enter your email and password to continue");
-      return;
-    }
-    localStorage.setItem("fluxy-auth", "true");
-    localStorage.setItem("fluxy-remember-me", String(rememberMe));
-    if (rememberMe) localStorage.setItem("fluxy-email", email.trim());
-    else localStorage.removeItem("fluxy-email");
-    toast.success("Welcome back to Fluxy Tech");
-    navigate("/dashboard");
-  };
-
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#060a18] px-4 py-10 text-white">
       <div className="nebula-orb nebula-orb-one" />
@@ -99,27 +81,10 @@ function LoginPage() {
           <div className="mb-8">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300"><Sparkles className="size-3.5" /> Control plane access</div>
             <h1 className="text-3xl font-black tracking-tight">Welcome back</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Sign in to manage your servers, plans, and payments.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">Sign in securely to manage your servers, plans, and payments.</p>
           </div>
-          <form onSubmit={submit} className="space-y-5">
-            <label className="block text-sm font-semibold text-slate-200">
-              Email address
-              <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-950/60 px-4 py-3 transition focus-within:border-blue-400/80 focus-within:ring-4 focus-within:ring-blue-500/10">
-                <UserRound className="size-4 text-slate-500" />
-                <input aria-label="Email address" type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600" placeholder="you@example.com" />
-              </div>
-            </label>
-            <label className="block text-sm font-semibold text-slate-200">
-              Password
-              <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-950/60 px-4 py-3 transition focus-within:border-blue-400/80 focus-within:ring-4 focus-within:ring-blue-500/10">
-                <ShieldCheck className="size-4 text-slate-500" />
-                <input aria-label="Password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600" placeholder="••••••••" />
-                <button type="button" className="text-xs font-semibold text-slate-500 hover:text-white" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button>
-              </div>
-            </label>
-            <div className="flex items-center justify-between text-xs text-slate-500"><label className="flex items-center gap-2"><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="accent-blue-500" /> Remember me</label><button type="button" onClick={() => toast("Password reset is ready for your inbox")} className="font-semibold text-blue-300 hover:text-blue-200">Forgot password?</button></div>
-            <button type="submit" className="primary-button w-full py-3.5">Log In <ArrowRight className="size-4" /></button>
-          </form>
+          <button type="button" onClick={() => startLogin()} className="primary-button w-full py-3.5">Continue with secure login <ArrowRight className="size-4" /></button>
+          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Only registered Fluxy Tech accounts can access the workspace.</p>
           <div className="mt-7 flex items-center gap-3 text-xs text-slate-500"><div className="h-px flex-1 bg-white/10" /> Secure workspace <div className="h-px flex-1 bg-white/10" /></div>
         </div>
         <p className="mt-6 text-center text-xs text-slate-600">By continuing, you agree to Fluxy Tech's terms and privacy policy.</p>
@@ -127,7 +92,6 @@ function LoginPage() {
     </main>
   );
 }
-
 function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; setPage: (page: Page) => void; onLogout: () => void; isOpen: boolean; onClose: () => void }) {
   const navItems: { id: Page; label: string; icon?: typeof LayoutDashboard; emoji?: string; helper: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, helper: "Overview & plans" },
@@ -145,7 +109,7 @@ function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; set
     </nav>
     <div className="mt-auto space-y-4">
       <div className="rounded-2xl border border-blue-400/10 bg-blue-500/[0.06] p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-300">Need a hand?</span><CircleHelp className="size-4 text-blue-300" /></div><p className="text-[11px] leading-5 text-slate-500">Our cloud crew is online 24/7.</p><button onClick={() => toast.success("Support request started")} className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Open support <ArrowRight className="ml-1 inline size-3" /></button></div>
-      <div className="flex items-center gap-3 border-t border-white/5 px-2 pt-4"><div className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-violet-400 to-blue-600 text-xs font-black text-white">AR</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">Alex Rivera</div><div className="truncate text-[11px] text-slate-500">alex@fluxy.tech</div></div><button aria-label="Log out" onClick={onLogout} className="text-slate-600 transition hover:text-white"><LogOut className="size-4" /></button></div>
+      <div className="flex items-center gap-3 border-t border-white/5 px-2 pt-4"><div className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-violet-400 to-blue-600 text-xs font-black text-white">FT</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">Workspace member</div><div className="truncate text-[11px] text-slate-500">Secure account</div></div><button aria-label="Log out" onClick={onLogout} className="text-slate-600 transition hover:text-white"><LogOut className="size-4" /></button></div>
     </div>
   </aside>;
 }
@@ -192,6 +156,7 @@ function ServersPage({ setPage }: { setPage: (page: Page) => void }) {
 function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmount?: number; setPage: (page: Page) => void }) {
   const [amount, setAmount] = useState("10");
   const [email, setEmail] = useState("");
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     const existing = document.querySelector<HTMLScriptElement>('script[data-paystack-inline="true"]');
@@ -204,18 +169,22 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
   }, []);
 
   const payNow = () => {
+    setPaying(true);
     const numericAmount = Number(amount);
     if (!email.trim()) {
       window.alert("Enter email");
+      setPaying(false);
       return;
     }
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       toast.error("Enter an amount greater than zero");
+      setPaying(false);
       return;
     }
     const paystack = (window as Window & { PaystackPop?: { setup: (config: { key: string; email: string; amount: number; currency: string; onClose: () => void; callback: (response: { reference: string }) => void }) => { openIframe: () => void } } }).PaystackPop;
     if (!paystack) {
       toast.error("Payment is still loading. Please try again.");
+      setPaying(false);
       return;
     }
     const handler = paystack.setup({
@@ -223,11 +192,11 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
       email: email.trim(),
       amount: Math.round(numericAmount * 100),
       currency: "KES",
-      onClose: () => undefined,
+      onClose: () => setPaying(false),
       callback: (response) => {
         fetch(`/wallet/verify?reference=${encodeURIComponent(response.reference)}`)
           .then(() => { window.alert("Payment successful!"); window.location.reload(); })
-          .catch(() => window.alert("Payment verification failed. Please contact support."));
+          .catch(() => { setPaying(false); window.alert("Payment verification failed. Please contact support."); });
       },
     });
     handler.openIframe();
@@ -243,7 +212,7 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
       <input id="amount" type="number" value={amount} min="1" step="0.01" onChange={(event) => setAmount(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
       <label htmlFor="email" style={{ color: "#888", fontSize: 12, marginTop: 12, display: "block" }}>EMAIL</label>
       <input id="email" type="email" placeholder="your@email.com" onChange={(event) => setEmail(event.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333", borderRadius: 12, padding: 14, color: "white", marginTop: 8, fontSize: 16 }} />
-      <button type="button" onClick={payNow} style={{ width: "100%", background: "linear-gradient(135deg,#0066ff,#00d4ff)", color: "white", border: 0, borderRadius: 12, padding: 16, fontWeight: 800, marginTop: 20, cursor: "pointer", fontSize: 16 }}>Pay Now</button>
+      <button type="button" onClick={payNow} disabled={paying} style={{ width: "100%", background: "linear-gradient(135deg,#0066ff,#00d4ff)", color: "white", border: 0, borderRadius: 12, padding: 16, fontWeight: 800, marginTop: 20, cursor: paying ? "wait" : "pointer", opacity: paying ? 0.75 : 1, fontSize: 16 }}>{paying ? "Opening secure payment…" : "Pay Now"}</button>
     </div>
   </div></div>;
 }
@@ -258,18 +227,17 @@ function DashboardShell() {
   useEffect(() => { if (path === "/" || path === "/login") navigate("/dashboard"); }, [navigate, path]);
   const setPage = (next: Page) => { setPageState(next); navigate(`/${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const buy = (name: string, amount: number) => { localStorage.setItem("fluxy-plan", name); localStorage.setItem("fluxy-amount", String(amount)); setSelectedPlan(name); setSelectedAmount(amount); toast.success(`${name} selected`, { description: "Continue in Wallet to pay securely inside Fluxy Tech." }); setPage("wallet"); };
-  const logout = () => { localStorage.removeItem("fluxy-auth"); navigate("/login"); toast("You have been logged out"); };
+  const { logout: authLogout } = useAuth();
+  const logout = async () => { await authLogout(); navigate("/login"); toast("You have been logged out"); };
 
   return <div className="min-h-screen bg-[#060a18] text-white"><div className="nebula-orb nebula-orb-one" /><div className="nebula-orb nebula-orb-two" />{sidebarOpen && <button type="button" aria-label="Close menu overlay" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-black/50 md:hidden" />}<Sidebar page={page} setPage={setPage} onLogout={logout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} /><main className="relative min-h-screen md:ml-64"><div className="mx-auto max-w-[1500px] px-5 py-5 sm:px-8 sm:py-7"><Topbar setPage={setPage} onMenu={() => setSidebarOpen(true)} />{page === "dashboard" && <DashboardPage buy={buy} goChannels={() => setPage("channels")} />}{page === "servers" && <ServersPage setPage={setPage} />}{page === "wallet" && <WalletPage selectedPlan={selectedPlan} selectedAmount={selectedAmount} setPage={setPage} />}{page === "channels" && <ChannelsPage buy={buy} />}</div></main></div>;
 }
 
 export default function Home() {
   const [location] = useLocation();
-  const [authenticated, setAuthenticated] = useState(false);
-  useEffect(() => { setAuthenticated(localStorage.getItem("fluxy-auth") === "true"); }, [location]);
-  const path = location;
-  if (path === "/login") return <LoginPage />;
-  if (path === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
-  if (!authenticated) return <LoginPage />;
+  const { isAuthenticated, loading } = useAuth();
+  if (location === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
+  if (loading) return <main className="grid min-h-screen place-items-center bg-[#060a18] text-sm text-slate-400">Checking secure session…</main>;
+  if (!isAuthenticated) return <LoginPage />;
   return <DashboardShell />;
 }
