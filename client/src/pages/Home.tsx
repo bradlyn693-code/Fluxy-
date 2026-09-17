@@ -92,7 +92,7 @@ function LoginPage() {
     </main>
   );
 }
-function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; setPage: (page: Page) => void; onLogout: () => void; isOpen: boolean; onClose: () => void }) {
+function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; setPage: (page: Page) => void; onLogout: () => void | Promise<void>; isOpen: boolean; onClose: () => void }) {
   const navItems: { id: Page; label: string; icon?: typeof LayoutDashboard; emoji?: string; helper: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, helper: "Overview & plans" },
     { id: "servers", label: "My Servers", icon: Server, helper: "Your infrastructure" },
@@ -109,7 +109,7 @@ function Sidebar({ page, setPage, onLogout, isOpen, onClose }: { page: Page; set
     </nav>
     <div className="mt-auto space-y-4">
       <div className="rounded-2xl border border-blue-400/10 bg-blue-500/[0.06] p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-300">Need a hand?</span><CircleHelp className="size-4 text-blue-300" /></div><p className="text-[11px] leading-5 text-slate-500">Our cloud crew is online 24/7.</p><button onClick={() => toast.success("Support request started")} className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Open support <ArrowRight className="ml-1 inline size-3" /></button></div>
-      <div className="border-t border-white/5 px-2 pt-4"><button type="button" aria-label="Sign out" onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.href = "/login"; }} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#ff4d4d", padding: 12, borderRadius: 10, fontWeight: 700, width: "100%" }}>🚪 Sign Out</button></div>
+      <div className="border-t border-white/5 px-2 pt-4"><button type="button" aria-label="Sign out" onClick={onLogout} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#ff4d4d", padding: 12, borderRadius: 10, fontWeight: 700, width: "100%" }}>🚪 Sign Out</button></div>
     </div>
   </aside>;
 }
@@ -245,7 +245,15 @@ function DashboardShell() {
   const setPage = (next: Page) => { setPageState(next); navigate(`/${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const buy = (name: string, amount: number) => { localStorage.setItem("fluxy-plan", name); localStorage.setItem("fluxy-amount", String(amount)); setSelectedPlan(name); setSelectedAmount(amount); toast.success(`${name} selected`, { description: "Continue in Wallet to pay securely inside Fluxy Tech." }); setPage("wallet"); };
   const { logout: authLogout } = useAuth();
-  const logout = async () => { await authLogout(); navigate("/login"); toast("You have been logged out"); };
+  const logout = async () => {
+    try {
+      await authLogout();
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }
+  };
 
   return <div className="min-h-screen bg-[#060a18] text-white"><div className="nebula-orb nebula-orb-one" /><div className="nebula-orb nebula-orb-two" />{sidebarOpen && <button type="button" aria-label="Close menu overlay" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-black/50 md:hidden" />}<Sidebar page={page} setPage={setPage} onLogout={logout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} /><main className="relative min-h-screen md:ml-64"><div className="mx-auto max-w-[1500px] px-5 py-5 sm:px-8 sm:py-7"><Topbar setPage={setPage} onMenu={() => setSidebarOpen(true)} />{page === "dashboard" && <DashboardPage buy={buy} goChannels={() => setPage("channels")} />}{page === "servers" && <ServersPage setPage={setPage} />}{page === "wallet" && <WalletPage selectedPlan={selectedPlan} selectedAmount={selectedAmount} setPage={setPage} />}{page === "channels" && <ChannelsPage buy={buy} />}</div></main></div>;
 }
