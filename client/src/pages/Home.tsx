@@ -160,15 +160,24 @@ function WalletPage({ setPage: _setPage }: { selectedPlan?: string; selectedAmou
   const [paymentLoadError, setPaymentLoadError] = useState(false);
 
   useEffect(() => {
+    const handleExternalScriptError = (event: ErrorEvent) => {
+      if (event.message !== "Script error.") return;
+      event.preventDefault();
+      setPaymentLoadError(true);
+      toast.error("Secure payment could not load. Check your connection and try again.");
+    };
+    window.addEventListener("error", handleExternalScriptError);
     const existing = document.querySelector<HTMLScriptElement>('script[data-paystack-inline="true"]');
-    if (existing) return;
-    const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v1/inline.js";
-    script.async = true;
-    script.dataset.paystackInline = "true";
-    script.onload = () => setPaymentLoadError(false);
-    script.onerror = () => { setPaymentLoadError(true); toast.error("Secure payment could not load. Check your connection and try again."); };
-    document.head.appendChild(script);
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.async = true;
+      script.dataset.paystackInline = "true";
+      script.onload = () => setPaymentLoadError(false);
+      script.onerror = () => { setPaymentLoadError(true); toast.error("Secure payment could not load. Check your connection and try again."); };
+      document.head.appendChild(script);
+    }
+    return () => window.removeEventListener("error", handleExternalScriptError);
   }, []);
 
   const payNow = () => {
