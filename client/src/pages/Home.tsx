@@ -67,13 +67,22 @@ function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function LoginPage() {
+function LoginPage({ initialRegistering = false }: { initialRegistering?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(initialRegistering);
+  const [remember, setRemember] = useState(() => localStorage.getItem("fluxy_remember") === "true");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("fluxy_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRemember(true);
+    }
+  }, []);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,8 +110,16 @@ function LoginPage() {
       }
       if (!payload.token && !payload.user) throw new Error("The login service returned an invalid response. Please refresh and try again.");
       localStorage.setItem("token", typeof payload.token === "string" ? payload.token : "loggedin");
-      localStorage.setItem("userEmail", email.trim().toLowerCase());
-      localStorage.setItem("fluxy_user", JSON.stringify(payload.user ?? { email: email.trim().toLowerCase() }));
+      const normalizedEmail = email.trim().toLowerCase();
+      localStorage.setItem("userEmail", normalizedEmail);
+      if (remember) {
+        localStorage.setItem("fluxy_email", normalizedEmail);
+        localStorage.setItem("fluxy_remember", "true");
+      } else {
+        localStorage.removeItem("fluxy_email");
+        localStorage.removeItem("fluxy_remember");
+      }
+      localStorage.setItem("fluxy_user", JSON.stringify(payload.user ?? { email: normalizedEmail }));
       navigate("/dashboard");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Authentication failed.");
@@ -120,10 +137,11 @@ function LoginPage() {
           <label className="block text-sm font-semibold text-slate-300">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
           <label className="block text-sm font-semibold text-slate-300">Password<input type="password" required minLength={8} autoComplete={isRegistering ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-[#333] bg-[#0a0a0a] p-[14px] text-white outline-none focus:border-blue-400" /></label>
           {!isRegistering && <div className="-mt-2 mb-4 text-right"><Link href="/reset-password" className="text-[13px] text-[#00d4ff] hover:underline">Forgot password?</Link></div>}
+          {!isRegistering && <label className="-mt-1 mb-2 flex cursor-pointer items-center gap-2 text-[13px] text-slate-400"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Remember me</label>}
           {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
           <button type="submit" disabled={submitting} className="w-full rounded-xl bg-gradient-to-r from-[#0066ff] to-[#00d4ff] p-[14px] font-bold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{submitting ? "Please wait…" : isRegistering ? "Create Account" : "Sign In"}</button>
         </form>
-        <button type="button" onClick={() => { setIsRegistering((value) => !value); setError(""); }} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">{isRegistering ? "Already have an account? Sign in" : "Need an account? Create one"}</button>
+        <button type="button" onClick={() => { const next = !isRegistering; setIsRegistering(next); setError(""); navigate(next ? "/signup" : "/login"); }} className="mt-5 w-full text-sm font-semibold text-blue-300 hover:text-blue-200">{isRegistering ? "Already have an account? Sign in" : "Need an account? Create one"}</button>
       </div>
     </main>
   );
@@ -364,6 +382,6 @@ export default function Home() {
   if (location === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
   if (location === "/reset-password") return <ResetPasswordPage />;
   if (location.startsWith("/update-password")) return <UpdatePasswordPage />;
-  if (!localStorage.getItem("fluxy_user")) return <LoginPage />;
+  if (!localStorage.getItem("fluxy_user")) return <LoginPage initialRegistering={location === "/signup"} />;
   return <DashboardShell />;
 }
