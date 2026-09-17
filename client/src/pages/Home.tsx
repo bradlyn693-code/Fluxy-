@@ -74,7 +74,6 @@ function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [, navigate] = useLocation();
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -89,10 +88,9 @@ function LoginPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Authentication failed.");
-      if (typeof payload.token === "string") localStorage.setItem("token", payload.token);
+      localStorage.setItem("token", typeof payload.token === "string" ? payload.token : "loggedin");
       localStorage.setItem("userEmail", email.trim().toLowerCase());
-      navigate("/dashboard");
-      window.location.reload();
+      window.location.href = "/dashboard";
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Authentication failed.");
     } finally {
@@ -287,9 +285,7 @@ function DashboardShell() {
 
 export default function Home() {
   const [location] = useLocation();
-  const { isAuthenticated, loading } = useAuth();
   if (location === "/pay/fluxt") return <WalletPage selectedPlan="" selectedAmount={0} setPage={() => {}} />;
-  if (loading) return <main className="grid min-h-screen place-items-center bg-[#060a18] text-sm text-slate-400">Checking secure session…</main>;
-  if (!isAuthenticated) return <LoginPage />;
+  if (!localStorage.getItem("token")) return <LoginPage />;
   return <DashboardShell />;
 }
